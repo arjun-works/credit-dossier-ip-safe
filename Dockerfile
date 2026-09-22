@@ -35,7 +35,7 @@ RUN pip install --no-cache-dir -r /tmp/backend-reqs.txt -r /tmp/mcp-reqs.txt
 # Copy source trees
 COPY backend/ ./backend
 COPY mcp/ ./mcp
-COPY --from=frontend-builder /app/frontend/.output ./frontend/.output
+COPY --from=frontend-builder /app/frontend ./frontend
 COPY Caddyfile ./
 COPY entrypoint.sh ./
 
