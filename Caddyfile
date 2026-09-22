@@ -1,0 +1,18 @@
+{
+	admin off
+}
+
+:{$PORT:8080} {
+	# ── 1. API Reverse Proxy ──────────────────────────────────
+	# Route all backend API requests to the FastAPI server
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	# ── 2. Frontend Reverse Proxy ─────────────────────────────
+	# Route all other traffic to the TanStack Start Node SSR server
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}
+
