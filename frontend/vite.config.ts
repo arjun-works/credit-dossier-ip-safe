@@ -46,5 +46,10 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
-  }
+  },
+  preview: {
+    host: "127.0.0.1",
+    port: 3000,
+    allowedHosts: true,
+  },
 });
