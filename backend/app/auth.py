@@ -219,20 +219,35 @@ def seed_initial_users(db: Session) -> None:
             continue
         existing = db.query(User).filter(User.user_id == user_id).first()
         if existing:
-            # A configured admin ID is an explicit bootstrap instruction. Repair
-            # an older account that used the same ID and was assigned a legacy
-            # role, but do not overwrite later password changes once it is admin.
-            if role == "admin" and existing.role != "admin":
+            # 1. Reset lock and failed attempts so user is never permanently locked out
+            if existing.failed_login_attempts > 0 or existing.locked_at is not None or existing.is_locked:
+                existing.failed_login_attempts = 0
+                existing.locked_at = None
+                existing.is_locked = False
+                changed = True
+                logger.info("Reset lock and failed attempts for account %s", user_id)
+
+            # 2. Ensure account is active and approved
+            if not existing.is_active or not existing.is_approved:
+                existing.is_active = True
+                existing.is_approved = True
+                changed = True
+
+            # 3. Synchronize password if configured password does not match current hash
+            if not verify_password(password, existing.password_hash):
                 try:
                     validate_password_strength(password, user_id, db)
-                    existing.role = "admin"
                     existing.password_hash = hash_password(password)
-                    existing.is_active = True
-                    existing.is_approved = True
+                    if role == "admin":
+                        existing.role = "admin"
                     changed = True
-                    logger.info("Updated existing account %s to admin", user_id)
+                    logger.info("Synchronized password for configured account %s to match environment", user_id)
                 except Exception as e:
-                    logger.error("Failed to promote account %s to admin: %s", user_id, e)
+                    logger.warning("Failed to sync password for %s: %s", user_id, e)
+            elif role == "admin" and existing.role != "admin":
+                existing.role = "admin"
+                changed = True
+                logger.info("Promoted existing account %s to admin", user_id)
             continue
         try:
             validate_password_strength(password, user_id, db)

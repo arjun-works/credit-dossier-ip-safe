@@ -16,6 +16,7 @@ trap cleanup SIGINT SIGTERM EXIT
 # ── 1. Start Local FastMCP Server (Internal: 127.0.0.1:8001) ──
 echo "[1/4] Starting Local Credit Intelligence MCP on 127.0.0.1:8001..."
 (cd /app/mcp && python server.py) &
+sleep 2
 
 # ── 2. Start FastAPI Backend (Internal: 127.0.0.1:8000) ────────
 echo "[2/4] Starting FastAPI Backend on 127.0.0.1:8000..."

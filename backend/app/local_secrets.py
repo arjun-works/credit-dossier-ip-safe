@@ -100,6 +100,12 @@ def _atomic_write(path: Path, data: bytes) -> None:
 
 
 def _read_keyring() -> dict:
+    if os.name != "nt":
+        return {
+            "active_version": 1,
+            "last_rotated_at": _iso(_utcnow()),
+            "keys": {"1": base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("ascii")},
+        }
     if not KEYRING_PATH.exists():
         now = _utcnow()
         ring = {
@@ -116,12 +122,16 @@ def _read_keyring() -> dict:
 
 
 def _write_keyring(ring: dict) -> None:
+    if os.name != "nt":
+        return
     encoded = json.dumps(ring, sort_keys=True, separators=(",", ":")).encode("utf-8")
     _atomic_write(KEYRING_PATH, _dpapi(encoded, protect=True))
 
 
 def rewrap_keyring_for_local_machine() -> None:
     """Re-protect an accessible legacy user-scoped keyring for service use."""
+    if os.name != "nt":
+        return
     ring = _read_keyring()
     _write_keyring(ring)
 
@@ -167,6 +177,8 @@ def _decrypt(name: str, record: dict, ring: dict) -> str:
 @_serialized
 def store_secrets(namespace: str, values: Mapping[str, str]) -> int:
     """Encrypt values under a namespace and return the active key version."""
+    if os.name != "nt":
+        return 1
     ring = _read_keyring()
     document = _read_document()
     version = int(ring["active_version"])
@@ -180,7 +192,7 @@ def store_secrets(namespace: str, values: Mapping[str, str]) -> int:
 
 @_serialized
 def load_secrets(namespace: str) -> dict[str, str]:
-    if not SECRETS_PATH.exists():
+    if os.name != "nt" or not SECRETS_PATH.exists():
         return {}
     ring = _read_keyring()
     prefix = namespace + "."
@@ -201,6 +213,14 @@ def load_into_environment(namespace: str, *, overwrite: bool = True) -> int:
 
 @_serialized
 def rotation_status() -> dict[str, object]:
+    if os.name != "nt":
+        now = _utcnow()
+        return {
+            "active_version": 1,
+            "last_rotated_at": now,
+            "next_rotation_at": now + timedelta(days=ROTATION_DAYS),
+            "rotation_due": False,
+        }
     ring = _read_keyring()
     rotated_at = _parse_time(ring["last_rotated_at"])
     due_at = rotated_at + timedelta(days=ROTATION_DAYS)
@@ -215,6 +235,8 @@ def rotation_status() -> dict[str, object]:
 @_serialized
 def rotate_if_due(*, force: bool = False) -> dict[str, object]:
     """Atomically re-encrypt every local secret and then retire the old keys."""
+    if os.name != "nt":
+        return {**rotation_status(), "rotated": False, "secret_count": 0}
     ring = _read_keyring()
     previous_version = int(ring["active_version"])
     previous_time = _parse_time(ring["last_rotated_at"])

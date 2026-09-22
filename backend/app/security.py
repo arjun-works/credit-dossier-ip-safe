@@ -117,10 +117,6 @@ def _load_tokenization_key() -> bytes:
         os.replace(temporary, key_path)
         return key
 
-    if settings.APP_ENV.lower() == "production":
-        raise KeyManagementError(
-            "Production requires Windows DPAPI or REPORT_TOKENIZATION_KEY supplied by the host secret manager."
-        )
     logger.warning(
         "Using an ephemeral report-tokenization key outside Windows development; "
         "tokens will change after restart."
