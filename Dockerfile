@@ -42,6 +42,8 @@ COPY entrypoint.sh ./
 RUN chmod +x /app/entrypoint.sh
 
 # Default environment settings inside container
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 ENV MCP_SSE_URL=http://127.0.0.1:8001/sse
 ENV MCP_HOST=127.0.0.1
 ENV MCP_PORT=8001

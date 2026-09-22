@@ -33,9 +33,12 @@ engine = create_engine(
 
 @event.listens_for(engine, "connect")
 def _set_postgresql_lock_timeout(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute(f"SET lock_timeout = '{settings.DB_LOCK_TIMEOUT_SECONDS}s'")
-    cursor.close()
+    try:
+        cursor = dbapi_connection.cursor()
+        cursor.execute(f"SET lock_timeout = '{settings.DB_LOCK_TIMEOUT_SECONDS}s'")
+        cursor.close()
+    except Exception:
+        pass
 
 
 # ── Session factory ─────────────────────────────────────────────
