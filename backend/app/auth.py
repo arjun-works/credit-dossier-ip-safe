@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import logging
 import secrets
 import re
 from datetime import datetime, timedelta, timezone
@@ -15,6 +16,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import AuthSession, PasswordPolicyConfiguration, User
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 SESSION_COOKIE = "credit_dossier_session"
@@ -220,23 +223,31 @@ def seed_initial_users(db: Session) -> None:
             # an older account that used the same ID and was assigned a legacy
             # role, but do not overwrite later password changes once it is admin.
             if role == "admin" and existing.role != "admin":
-                validate_password_strength(password, user_id, db)
-                existing.role = "admin"
-                existing.password_hash = hash_password(password)
-                existing.is_active = True
-                existing.is_approved = True
-                changed = True
+                try:
+                    validate_password_strength(password, user_id, db)
+                    existing.role = "admin"
+                    existing.password_hash = hash_password(password)
+                    existing.is_active = True
+                    existing.is_approved = True
+                    changed = True
+                    logger.info("Updated existing account %s to admin", user_id)
+                except Exception as e:
+                    logger.error("Failed to promote account %s to admin: %s", user_id, e)
             continue
-        validate_password_strength(password, user_id, db)
-        db.add(
-            User(
-                user_id=user_id,
-                password_hash=hash_password(password),
-                role=role,
-                is_approved=True,
+        try:
+            validate_password_strength(password, user_id, db)
+            db.add(
+                User(
+                    user_id=user_id,
+                    password_hash=hash_password(password),
+                    role=role,
+                    is_approved=True,
+                )
             )
-        )
-        changed = True
+            changed = True
+            logger.info("Successfully seeded %s user: '%s'", role, user_id)
+        except Exception as e:
+            logger.error("Failed to seed initial %s user '%s': %s", role, user_id, e)
     changed = bool(
         db.query(User).filter(User.role == "normal").update(
             {User.role: "credit_analyst"}, synchronize_session=False
