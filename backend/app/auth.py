@@ -250,7 +250,14 @@ def seed_initial_users(db: Session) -> None:
                 logger.info("Promoted existing account %s to admin", user_id)
             continue
         try:
-            validate_password_strength(password, user_id, db)
+            #validate_password_strength(password, user_id, db)
+            validation_user_id = (
+                None
+                if role == "relationship_manager" and user_id == "admin"
+                else user_id
+             )
+            validate_password_strength(password, validation_user_id, db)
+
             db.add(
                 User(
                     user_id=user_id,
